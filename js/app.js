@@ -1,9 +1,15 @@
 
+// returns the distance between two objects
 function dist(a, b) {
     return Math.sqrt((a.x - b.x)**2+(a.y - b.y)**2);
 }
 
-// Enemies our player must avoid
+// returns x between min and max values
+function clip(x, min, max) {
+    return Math.min(Math.max(x,min), max);
+}
+
+// enemies our player must avoid
 class Enemy {
 
     static minimumVelocity = 40;
@@ -49,10 +55,7 @@ class Enemy {
     // all computers.
 //};
 
-// Now write your own player class
-// This class requires an update(), render() and
-// a handleInput() method.
-class Player {
+ class Player {
 
     constructor(enemies) {
         this.sprite = 'images/char-boy.png';
@@ -62,13 +65,16 @@ class Player {
         this.verticalStep = 83;
         this.enemies = enemies;
         this.reset();
+        this.win = false;
     }
 
+    // resets the player to the original position
     reset() {
         this.x = 2.5 * this.spriteWidth;
-        this.y = (5*83)+(83/2);
+        this.y = (5 * 83) +  (83 / 2);
     }
 
+    // checks if the player has collided with an enemy
     hasCollided(threshold = 60) {
         for(const enemy of this.enemies) {
             if(dist(this, enemy) <= threshold){
@@ -78,30 +84,39 @@ class Player {
         return false;
     }
 
-    update(dt) {
+    // if the player has collided with an enemy reset the player
+    update() {
         if(this.hasCollided()) {
             this.reset();
         }
     }
 
+    // draws the player
     render() {
-        const x = this.x - this.spriteWidth / 2
-        const y = this.y - this.spriteHeight / 2
+        const x = this.x - this.spriteWidth / 2;
+        const y = this.y - this.spriteHeight / 2;
         ctx.drawImage(Resources.get(this.sprite), x, y);
     }
 
+    // makes sure the player doesn't go outside the canvas
     clipPosition() {
-        let clip = (x, min, max) => Math.min(Math.max(x, min), max);
+        // min and max x values
         const minX = this.spriteWidth / 2;
         const maxX = 4.5 * this.spriteWidth;
-        const minY = -83/2 + this.spriteHeight / 2;
-        const maxY = (5*83)+(83/2);
+        // min and max y values
+        const minY = -83 / 2 + this.spriteHeight / 2;
+        const maxY = (5 * 83)+(83 / 2);
+        // keeps x and y between their min and max values
         this.x = clip(this.x, minX, maxX);
         this.y = clip(this.y, minY, maxY);
+
+        if(this.y == minY) {
+            this.win = true;
+        }
     }
 
+    // takes the pressed keys and moves the player accordingly
     handleInput(direction) {
-
         switch(direction) {
             case 'left':
                 this.x -= this.horizontalStep;
@@ -116,16 +131,53 @@ class Player {
                 this.y += this.verticalStep;
                 break;
         }
-
-        this.clipPosition()
+        // clips the player position not to go outside the canvas
+        this.clipPosition();
     }
 
 }
 
-// Now instantiate your objects.
-// Place all enemy objects in an array called allEnemies
-// Place the player object in a variable called player
+// winning star class
+class Star {
 
+    constructor(x, y) {
+        this.sprite = 'images/Star.png';
+        this.x = x;
+        this.y = y;
+        this.v = 150;
+        this.spriteWidth = 101;
+        this.spriteHeight = 171;
+    }
+
+    render() {
+        const x = this.x - this.spriteWidth;
+        const y = this.y - this.spriteHeight / 2;
+        ctx.drawImage(Resources.get(this.sprite), x, y);
+    }
+
+    // makes sure the star stops in the middle of the canvas
+    clipPosition() {
+        // min and max x values
+        const minX = this.spriteWidth / 2;
+        const maxX = 3 * this.spriteWidth;
+        // min and max y values
+        const minY = -83 / 2 + this.spriteHeight / 2;
+        const maxY = (3 * 83)+(83 / 2);
+        // keeps x and y between their min and max values
+        this.x = clip(this.x, minX, maxX);
+        this.y = clip(this.y, minY, maxY);
+    }
+
+    update(dt) {
+
+        this.y += this.v * dt;
+        this.x += this.v * dt;
+        this.clipPosition();
+    }
+
+}
+
+// initialise enemies and player
 const delta = 83 * 0.75;
 const enemy1 = new Enemy( 1 * 83 + delta);
 const enemy2 = new Enemy( 2 * 83 + delta);
@@ -134,8 +186,8 @@ const allEnemies = [enemy1, enemy2, enemy3];
 
 const player = new Player(allEnemies);
 
-// This listens for key presses and sends the keys to your
-// Player.handleInput() method. You don't need to modify this.
+const star =  new Star(0,0);
+
 document.addEventListener('keyup', function(e) {
     var allowedKeys = {
         37: 'left',
