@@ -9,7 +9,7 @@ function clip(x, min, max) {
     return Math.min(Math.max(x, min), max);
 }
 
-// randomly picks a number between min and max
+// retuns a number in the range [min, max)
 function sampleInRange(min, max) {
   return min + Math.random() * (max - min);
 }
@@ -25,14 +25,19 @@ class Enemy {
 
     constructor(y) {
         this.sprite = 'images/enemy-bug.png';
+
+        // velocity at which the enemy traverses the board
         this.minimumVelocity = 40;
         this.maximumVelocity = 160;
-        this.y = y;
+        this.v = sampleInRange(this.minimumVelocity, this.maximumVelocity);
+
+        // x and y is the position of the enemy on the board, and parametrizes the centre of the
+        // corresponding sprite.
         // randomly picks an initial x position for the enemy from a range
         // the range is wider than the board because we want the enemies to slowly appear/dissapear
         // in and out of the screen
-        const initialX = sampleInRange(0, boardWidth + spriteWidth) - spriteWidth / 2;
-        this.reset(initialX);
+        this.x = sampleInRange(0, boardWidth + spriteWidth) - spriteWidth / 2;
+        this.y = y;
     }
 
     // updates the enemy's position
@@ -40,7 +45,8 @@ class Enemy {
     update(dt) {
         this.x += this.v * dt;
         if(this.x > boardWidth + spriteWidth / 2) {
-            this.reset(-spriteWidth / 2);
+            this.x = -spriteWidth / 2;
+            this.v = sampleInRange(this.minimumVelocity, this.maximumVelocity);
         }
     }
 
@@ -50,17 +56,10 @@ class Enemy {
         const y = this.y - spriteHeight / 2;
         ctx.drawImage(Resources.get(this.sprite), x, y);
     }
-
-    // resets the enemy
-    reset(x) {
-        this.x = x;
-        // the enemy's velocity is picked randomly between min and max velocities
-        this.v = sampleInRange(this.minimumVelocity, this.maximumVelocity);
-    }
 };
 
 class Player {
-    // the player needs to know the enemies in the game, so they get them as an argument
+    // the player needs to know the enemies' positions on the board, so we pass them to the player constructor
     constructor(enemies) {
         //the player can have different player images
         this.sprites = [
@@ -77,25 +76,26 @@ class Player {
         this.win = false;
     }
 
-    // resets the player to the original position and randomly chooses a player image
+    // resets the player to the original position at the bottom of the board and randomly chooses a player image
     reset() {
+        // x and y is the position of the enemy on the board, and parametrizes the centre of the
+        // corresponding sprite.
         this.x = boardWidth / 2;
         this.y = spriteHeight / 2 + 4.5 * tileHeight;
         this.sprite = this.sprites[Math.floor(sampleInRange(0, 5))];
     }
 
-    // if the distance between the player and any enemy is shorter than the threshold distance (60 by default)
-    // then it returns true
+    // the player collides with an enemy if their distance is smaller than the threshold (60 pixels by default)
     hasCollided(threshold = 60) {
         for(const enemy of this.enemies) {
-            if(dist(this, enemy) <= threshold){
+            if(dist(this, enemy) < threshold){
                 return true;
             }
         }
         return false;
     }
 
-    // if the player has collided with an enemy reset the player
+    // if the player has collided with an enemy we reset it
     update() {
         if(this.hasCollided()) {
             this.reset();
@@ -109,16 +109,14 @@ class Player {
         ctx.drawImage(Resources.get(this.sprite), x, y);
     }
 
-    // makes sure the player doesn't go outside the canvas
+    // makes sure the player doesn't go outside the board
     clipPosition() {
         const minX = spriteWidth / 2;
         const maxX = minX + 4 * spriteWidth;
+        this.x = clip(this.x, minX, maxX);
         const minY = spriteHeight / 2 - tileHeight / 2;
         const maxY = minY + 5 * tileHeight
-        // keeps x and y between their min and max values
-        this.x = clip(this.x, minX, maxX);
         this.y = clip(this.y, minY, maxY);
-
         // the player wins the game when they reach the top of the canvas (minY)
         if(this.y == minY) {
             this.win = true;
@@ -141,25 +139,34 @@ class Player {
                 this.y += this.verticalStep;
                 break;
         }
-        // clips the player position so they don't go outside the canvas
+        // clips the player position so they don't go outside the board
         this.clipPosition();
     }
 
 }
 
-// winning star class
+// star class, to be drawn over the board, circling around the player character, when the player wins.
 class Star {
 
-    constructor(theta) {
+    constructor(theta, player) {
         this.sprite = 'images/Star.png';
         this.spriteWidth = 101;
         this.spriteHeight = 171;
+
+        // x and y is the position of the enemy on the board, and parametrizes the centre of the
+        // corresponding sprite.
+        // Initially the star is rendered outside the canvas
         this.x = -this.spriteWidth;
         this.y = -this.spriteHeight;
+
+        // the star moves following a spiral, which we parameterize in polar coordinates (r, theta)
+        // we need to track time - used to update r via a smooth exponential decay - and theta.
         this.t = 0;
         this.theta = theta;
         this.radialTau = 2;
         this.angularVelocity = 2 * Math.PI / 2;
+
+        this.player = player;
     }
 
     // draws the star with the center of the star's sprite at the x, y coordinates
@@ -171,16 +178,16 @@ class Star {
 
     // updates the position of the star so that it moves along a spiral
     // it first updates the position in polar coordinates and then converts them to cartesian coordinates
-    // the angle theta changes at a constant rate  while the radius smoothly goes from max value to a min value
+    // the angle theta changes at a constant rate, whilst the radius smoothly goes from a max value to a min value
     // with an exponential decay
     update(dt) {
         this.t += this.radialTau * dt;
         this.theta += this.angularVelocity * dt;
         const maxRadius = boardWidth / 2;
-        const minRadius = 60;
+        const minRadius = 80;
         const radius = minRadius + (maxRadius-minRadius) * Math.exp(-this.t);
-        this.x = boardWidth / 2 + radius * Math.cos(this.theta);
-        this.y = boardHeight / 2 + radius * Math.sin(this.theta);
+        this.x = radius * Math.cos(this.theta) + player.x;
+        this.y = radius * Math.sin(this.theta) + player.y;
     }
 
 }
@@ -195,10 +202,10 @@ const allEnemies = [enemy1, enemy2, enemy3];
 const player = new Player(allEnemies);
 
 const delta_init_theta = Math.PI / 2;
-const star1 = new Star(1 * delta_init_theta);
-const star2 = new Star(2 * delta_init_theta);
-const star3 = new Star(3 * delta_init_theta);
-const star4 = new Star(4 * delta_init_theta);
+const star1 = new Star(1 * delta_init_theta, player);
+const star2 = new Star(2 * delta_init_theta, player);
+const star3 = new Star(3 * delta_init_theta, player);
+const star4 = new Star(4 * delta_init_theta, player);
 const allStars = [star1, star2, star3, star4];
 
 document.addEventListener('keyup', function(e) {
