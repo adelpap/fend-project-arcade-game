@@ -1,20 +1,22 @@
 # Classic Arcade Game Clone Project
 
-## Table of Contents
+Clone of the classic arcade game frogger for FEND.
 
-- [Instructions](#instructions)
-- [Contributing](#contributing)
 
-## Instructions
+## How to play the game
 
-Use this [rubric](https://review.udacity.com/#!/rubrics/15/view) for self-checking your submission.
+The game can be played on the browser.
 
-Make sure the functions you write are **object-oriented** - either class functions (like `Player` and `Enemy`) or class prototype functions such as `Enemy.prototype.checkCollisions`. Also make sure that the keyword `this` is used appropriately within your class and class prototype functions to refer to the object the function is called upon.
+The player's objective is to reach the water at the top of the screen avoiding any enemies. If an enemy touches the player then the game restarts.
 
-Your **README.md** file should be updated with instructions on both how to 1. Run and 2. Play your arcade game.
+The player can move with the Up / Down / Right / Left arrows and cannot move outside the tiles. The enemies move independently with various velocities on the stone tiles.
 
-For detailed instructions on how to get started, check out this [guide](https://docs.google.com/document/d/1v01aScPjSWCCWQLIpFqvg3-vXLH2e8_SZQKC8jNO0Dc/pub?embedded=true).
+## Usage
 
-## Contributing
+The project consists of these files:
 
-This repository is the starter code for _all_ Udacity students. Therefore, we most likely will not accept pull requests.
+`engine.js` - This file provides the game loop functionality (update entities and render), draws the initial game board on the screen, and then calls the update and render methods on the player and enemy objects. It uses the canvas API to draw the objects.
+
+`resources.js` - An image loading utility.
+
+`app.js` - This file implements the Enemy, Player and Star classes and their functionality.
